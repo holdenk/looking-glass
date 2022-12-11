@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lg
+  namespace: lg
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 2
+  selector:
+    matchLabels:
+      app: lg
+  strategy:
+    rollingUpdate:
+      maxSurge: 50%
+      maxUnavailable: 50%
+    type: RollingUpdate
+  template:
+    metadata:
+      name: lg-deploy
+      creationTimestamp: null
+      labels:
+        app: lg
+    spec:
+      containers:
+      - volumeMounts:
+        - name: key
+          readOnly: true
+          mountPath: /ssh_key
+        image: holdenk/looking-glass:dec91816
+        env:
+          - name: recaptcha
+            valueFrom:
+              secretKeyRef:
+                name: secrets
+                key: recaptcha
+                optional: true
+          - name: recaptcha_apikey
+            valueFrom:
+              secretKeyRef:
+                name: secrets
+                key: recaptcha_apikey
+                optional: true
+          - name: recaptcha_apisecret
+            valueFrom:
+              secretKeyRef:
+                name: secrets
+                key: recaptcha_apisecret
+                optional: true
+        name: lg
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          name: web
+          protocol: TCP
+        resources: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: key
+        secret:
+          secretName: hcom-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lg-svc
+  namespace: lg
+spec:
+  internalTrafficPolicy: Cluster
+  ipFamilies:
+  - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+  - name: hub
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: lg
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lg-https-ingress
+  namespace: lg
+  annotations:
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
+    cert-manager.io/issue-temporary-certificate: "true"
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: lg.pigscanfly.ca
+    http:
+      paths:
+      - backend:
+          service:
+            name: lg-svc
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - lg.pigscanfly.ca
+    secretName: lg-tls-secret
