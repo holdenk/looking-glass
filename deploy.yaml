@@ -26,7 +26,7 @@ spec:
         - name: key
           readOnly: true
           mountPath: /ssh_key
-        image: holdenk/looking-glass:29jan2023
+        image: holdenk/looking-glass:31jan2023
         env:
           - name: recaptcha
             valueFrom:

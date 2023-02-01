@@ -1,7 +1,6 @@
 FROM php:8.1-apache
 
 EXPOSE 80
-COPY . /var/www/html
 RUN apt update \
     && apt -y install bash git ssh openssl libgmp-dev libgmp3-dev libsqlite3-dev \
     && ln -s /usr/include/x86_64-linux-gnu/gmp.h /usr/include/gmp.h \
@@ -15,3 +14,4 @@ RUN apt update \
     && chown www-data /var/log/looking-glass.log \
     && echo "RemoteIPHeader X-Forwarded-For" > /etc/apache2/conf-available/remoteip.conf \
     && a2enconf remoteip
+COPY . /var/www/html
